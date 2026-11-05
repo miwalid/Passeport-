@@ -1,3 +1,4 @@
+import {skipState,recordArrival,requestSkip} from '../../../lib/skip-rules';
 import {env} from '../../../supabase/functions/rihla-game/database';
 import {bank,makeTeam,normalize,testPosts,upgradeWaitingLibrary} from '../../../lib/game';
 import {hydrateClues} from '../../../lib/clue-library';
@@ -33,7 +34,7 @@ export async function POST(req:Request){try{
  const b:any=await req.json();const db=env.DB;if(!db)return json({error:'قاعدة البيانات غير متاحة'},503);
  if(b.action==='create'){
  const code=crypto.randomUUID().replaceAll('-','').slice(0,6).toUpperCase(),token=crypto.randomUUID(),coop=b.coop===true;
- const r:any={code,token,name:String(b.name||'رحلة الاكتشاف').slice(0,100),status:'waiting',start:0,duration:90,grace:5,demo:!!b.demo,catalogVersion:2,settings:{points:100,penalty:10,hint:10,skip:30,count:coop?5:8,coop},library:bank,teams:[],posts:[]};
+ const r:any={code,token,name:String(b.name||'رحلة الاكتشاف').slice(0,100),status:'waiting',start:0,duration:90,grace:5,demo:!!b.demo,catalogVersion:2,settings:{points:100,penalty:10,hint:10,skip:30,skipLimit:3,skipWaitMinutes:5,count:coop?5:8,coop},library:bank,teams:[],posts:[]};
  if(b.demo){r.teams=[makeTeam('فريق النسور',0),...(!coop?[makeTeam('فريق النجوم',1)]:[])];r.posts=testPosts(b.position).map(p=>({...p,...(coop?{clueSpots:clueSpots(p,25)}:{})}));r.settings.count=4;r.gpsTest=true;assign(r);if(!coop){r.status='running';r.start=Date.now();}}
  await db.prepare('INSERT INTO rooms(code,data,version) VALUES(?,?,0)').bind(code,JSON.stringify(r)).run();return json({code,token,role:'admin',room:r});}
  for(let retry=0;retry<5;retry++){
@@ -57,7 +58,7 @@ export async function POST(req:Request){try{
  if(b.member){t=r.teams.find((x:any)=>x.id===b.team);member=t?.members?.find((m:any)=>m.id===b.member&&m.token===b.token);if(!member)return json({error:'يرجى تسجيل الدخول مجددًا'},403);}
  if(!admin&&!t)return json({error:'يرجى تسجيل الدخول مجددًا'},403);
  if(b.action==='read'){
- let changed=!admin&&!member?releaseHunt(r,t,b.position,now):false;if(admin){changed=upgradeWaitingLibrary(r);changed=hydrateClues(r)||changed;}
+ let changed=!admin&&!member?recordArrival(r,t,b.position,now):false;changed=(!admin&&!member?releaseHunt(r,t,b.position,now):false)||changed;if(admin){changed=upgradeWaitingLibrary(r);changed=hydrateClues(r)||changed;}
  if(changed&&!await commit())continue;return json({room:view(r,t,admin,member)});}
  if(member){if(b.action!=='collect')return json({error:'الإجابة وإدارة الفريق من الهاتف الرئيسي فقط'},403);collectClue(r,t,member,b,now);if(!await commit())continue;return json({room:view(r,t,false,member)});}
  if(!admin&&b.action==='memberRemove'){
@@ -68,8 +69,9 @@ export async function POST(req:Request){try{
  if(admin){
  if(b.action==='save'){
  if(r.status!=='waiting')throw Error('لا يمكن تعديل الإعدادات بعد الانطلاق');const c=b.config;
- const numeric={points:+c.settings.points,penalty:+c.settings.penalty,hint:+c.settings.hint,skip:+c.settings.skip,count:+c.settings.count};
+ const numeric={points:+c.settings.points,penalty:+c.settings.penalty,hint:+c.settings.hint,skip:+c.settings.skip,skipLimit:+(c.settings.skipLimit??3),skipWaitMinutes:+(c.settings.skipWaitMinutes??5),count:+c.settings.count};
  if(Object.values(numeric).some(v=>!Number.isFinite(v)||v<0)||!Number.isInteger(numeric.count)||numeric.count<1)throw Error('تحقق من البارم وعدد البلدان');
+ if(!Number.isInteger(numeric.skipLimit)||numeric.skipLimit>100||numeric.skipWaitMinutes>600)throw Error('تحقق من عدد التجاوزات ومدة الانتظار');
  if(!Number.isFinite(+c.duration)||+c.duration<1||+c.duration>600)throw Error('تحقق من المدة');
  if(!Array.isArray(c.library)||!Array.isArray(c.posts)||!Array.isArray(c.teams)||c.library.length>200)throw Error('إعدادات غير صالحة');
  r.name=String(c.name).slice(0,100);r.duration=+c.duration;r.settings={...numeric,coop:c.settings.coop===true};
@@ -82,26 +84,36 @@ export async function POST(req:Request){try{
  else if(b.action==='finish'){r.status='finished';r.finishedAt ||= now;r.teams.forEach((x:any)=>{x.done=true;x.request=false;});}
  else if(b.action==='skip'){
  const x=r.teams.find((x:any)=>x.id===b.target);if(!x?.request)throw Error('الطلب غير موجود');
- if(b.approve){if(r.status!=='running'||now>=close)throw Error('انتهت اللعبة');const q=r.library.find((q:any)=>q.id===x.route[x.step]?.qid);if(!q)throw Error('المحطة غير موجودة');x.score=Math.max(0,x.score-r.settings.skip);x.stamps.push({country:q.country,flag:q.flag,ok:false});x.step++;x.errors=0;x.hinted=false;x.opened=0;x.override=false;x.done=now>=end||x.step>=x.route.length;}x.request=false;
+ if((b.approve&&!x.skipRequest)||(x.skipRequest&&(x.skipRequest.id!==b.requestId||x.skipRequest.step!==x.step)))throw Error('تغيّر طلب التجاوز، حدّث اللوحة');
+ if(b.approve){
+ if(r.status!=='running'||x.done||now>=close)throw Error('انتهت اللعبة');
+ const state=skipState(r.settings,x,now);if(state.remaining===0||state.waitSeconds!==0)throw Error('لم تتحقق شروط التجاوز');
+ const q=r.library.find((q:any)=>q.id===x.route[x.step]?.qid);if(!q)throw Error('المحطة غير موجودة');
+ x.skipCount=state.used+1;x.score=Math.max(0,x.score-r.settings.skip);x.stamps.push({country:q.country,flag:q.flag,ok:false,skipped:true});
+ x.skipHistory ||= [];x.skipHistory.push({...x.skipRequest,decision:'approved',decidedAt:now,penalty:r.settings.skip});
+ x.step++;x.errors=0;x.hinted=false;x.opened=0;x.override=false;x.done=now>=end||x.step>=x.route.length;
+ }else{x.skipHistory ||= [];x.skipHistory.push({...x.skipRequest,decision:'rejected',decidedAt:now});}
+ x.request=false;x.skipRequest=null;
  }else throw Error('إجراء غير معروف');
  }else{
  if(r.status!=='running'||t.done||now>=close)throw Error('انتهى وقت الإجابة');
  if(r.settings.coop&&b.step!==t.step)throw Error('تغيّرت المرحلة، حدّث الصفحة');
  const step=t.route[t.step],p=r.posts.find((x:any)=>x.id===step?.post),q=r.library.find((x:any)=>x.id===step?.qid);if(!p||!q)throw Error('المسار غير متاح');
  const present=(r.demo&&!r.gpsTest)||t.override||gpsPresent(b.position,p,now),ready=!r.settings.coop||huntComplete(t);
- if(b.action==='rescue'){if(now>=end&&!t.opened)throw Error('انتهى وقت فتح الألغاز');if(String(b.rescue)!==p.rescue)throw Error('رمز الطوارئ غير صحيح');t.override=true;if(r.settings.coop){t.arrivals ||= {};t.arrivals[String(t.step)] ||= now;}if(ready)t.opened ||= now;}
+ if(b.action==='rescue'){if(now>=end&&!t.opened)throw Error('انتهى وقت فتح الألغاز');if(String(b.rescue)!==p.rescue)throw Error('رمز الطوارئ غير صحيح');t.override=true;t.arrivals ||= {};t.arrivals[String(t.step)] ||= now;if(ready)t.opened ||= now;}
  else{
  if(!present)throw Error('ابق داخل نطاق المحطة مع موقع حديث ودقيق');
- if(b.action==='request'&&r.settings.coop)t.request=true;
+ recordArrival(r,t,b.position,now);
+ if(b.action==='request')requestSkip(r,t,now);
  else if(!ready)throw Error('اجمعوا الأدلة العشرة أولًا');
  else if(b.action==='open'){if(now>=end)throw Error('انتهى وقت فتح ألغاز جديدة');t.opened ||= now;}
  else{
  if(!t.opened)throw Error('افتح اللغز أولًا');
  if(b.action==='hint'){if(!t.hinted){t.score=Math.max(0,t.score-r.settings.hint);t.hinted=true;}}
- else if(b.action==='request')t.request=true;
+ else if(b.action==='request')requestSkip(r,t,now);
  else if(b.action==='answer'){
  const answers=[q.country,...String(q.aliases||'').split(',')].filter(Boolean).map(normalize);
- if(answers.includes(normalize(String(b.answer)))){t.score+=r.settings.points;t.success++;t.last=now-r.start;t.stamps.push({country:q.country,flag:q.flag,ok:true});t.step++;t.errors=0;t.hinted=false;t.opened=0;t.override=false;t.request=false;t.done=now>=end||t.step>=t.route.length;}
+ if(answers.includes(normalize(String(b.answer)))){t.score+=r.settings.points;t.success++;t.last=now-r.start;t.stamps.push({country:q.country,flag:q.flag,ok:true});t.step++;t.errors=0;t.hinted=false;t.opened=0;t.override=false;t.request=false;t.skipRequest=null;t.done=now>=end||t.step>=t.route.length;}
  else{t.errors++;if(t.errors>1)t.score=Math.max(0,t.score-r.settings.penalty);}
  }else throw Error('إجراء غير معروف');
  }}

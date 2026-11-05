@@ -69,4 +69,23 @@ soloConfig.teams=[makeTeam('Solo',0)];await call('save',{config:soloConfig},solo
 // Country selection persists and controls assignment for real games.
 const chosen=await call('create',{name:'Selected countries',coop:false});const chosenAuth={code:chosen.code,token:chosen.token};const chosenConfig=chosen.room;chosenConfig.settings.count=2;chosenConfig.teams=[makeTeam('One',0)];chosenConfig.posts=[0,1].map(i=>({id:'chosen'+i,name:'Post',lat:36.8,lng:10.18+i*.001,radius:20,rescue:'123456'}));chosenConfig.library=chosenConfig.library.map((q,i)=>({...q,enabled:i>=48}));await call('save',{config:chosenConfig},chosenAuth);const assignedChoice=await call('assign',{},chosenAuth);assert.deepEqual(new Set(assignedChoice.room.teams[0].route.map(x=>x.qid)),new Set(chosenConfig.library.slice(48).map(q=>q.id)));const reloadedChoice=await call('read',{},chosenAuth);assert.equal(reloadedChoice.room.library.filter(q=>q.enabled!==false).length,2);await call('start',{},chosenAuth);
 const rejected=await call('create',{coop:false});rejected.room.settings.count=1;rejected.room.library=rejected.room.library.map(q=>({...q,enabled:false}));await call('save',{config:rejected.room},{code:rejected.code,token:rejected.token},400);
+// Skip requests: server arrival time, waiting, refusal, approval limit and stale approvals.
+for(const coop of [false,true]){
+ clock=realNow();const game=await call('create',{coop});const owner={code:game.code,token:game.token};const cfg=game.room;cfg.settings.count=4;cfg.teams=[makeTeam('Skip test',0)];cfg.posts=Array.from({length:4},(_,i)=>{const p={id:'skip-'+i,name:'Post',lat:36.8+i*.001,lng:10.18,radius:20,rescue:'123456'};return {...p,clueSpots:clueSpots(p)}});await call('save',{config:cfg},owner);
+ const joined=await call('join',{code:game.code,secret:cfg.teams[0].secret});const player={code:game.code,team:joined.team,token:joined.token};
+ if(coop)await call('memberJoin',{code:game.code,team:joined.team,invite:joined.room.team.inviteKey,name:'Member',device:crypto.randomUUID()});
+ await call('start',{},owner);
+ for(let step=0;step<3;step++){
+  await call('request',{step,position:position(cfg.posts[step])},player,400);
+  await call('read',{position:position(cfg.posts[step])},player);clock+=299999;
+  await call('request',{step,position:position(cfg.posts[step])},player,400);clock+=1;
+  let requested=await call('request',{step,position:position(cfg.posts[step])},player);assert(requested.room.team.request);const requestId=requested.room.team.skipRequest.id;
+  await call('request',{step,position:position(cfg.posts[step])},player,400);
+  await call('skip',{target:joined.team,approve:true,requestId:'stale'},owner,400);
+  if(step===0){await call('skip',{target:joined.team,approve:false,requestId},owner);const rejectedView=await call('read',{},player);assert.equal(rejectedView.room.team.skipCount??0,0);requested=await call('request',{step,position:position(cfg.posts[step])},player);}
+  const decision={target:joined.team,approve:true,requestId:requested.room.team.skipRequest.id};const approved=await call('skip',decision,owner);const state=approved.room.teams[0];assert.equal(state.skipCount,step+1);assert.equal(state.step,step+1);assert.equal(state.score,0);assert.equal(state.success,0);assert(state.stamps.every(s=>s.ok===false&&s.skipped));await call('skip',decision,owner,400);
+ }
+ await call('read',{position:position(cfg.posts[3])},player);clock+=300000;await call('request',{step:3,position:position(cfg.posts[3])},player,400);
+ const reconnect=await call('join',{code:game.code,secret:cfg.teams[0].secret});assert.equal(reconnect.room.team.skipCount,3);
+}
 Date.now=realNow;console.log('PASS: QR membership, team isolation, privacy before 10/10, GPS checks, automatic/balanced assignment, concurrent collections, duplicate/stale requests, principal-only answers, scores, grace, legacy mode, finish, stale-config preservation.');

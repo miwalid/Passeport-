@@ -1,3 +1,94 @@
+// lib/team-utils.ts
+var distance = (a, b) => {
+  const rad = (x) => x * Math.PI / 180;
+  const d = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+  return 6371e3 * 2 * Math.atan2(Math.sqrt(d), Math.sqrt(1 - d));
+};
+function makeTeam(name, i) {
+  return { id: uid(), name, color: ["#0df", "#c6f", "#fc6", "#5e9"][i % 4], emblem: ["\u{1F985}", "\u2B50", "\u{1F9ED}", "\u{1F30D}"][i % 4], secret: String(Math.floor(1e5 + Math.random() * 9e5)), inviteKey: uid(), members: [], collections: {}, route: [], step: 0, score: 0, success: 0, last: 0, stamps: [], errors: 0, hinted: false, opened: 0, override: false, request: false, done: false };
+}
+function uid() {
+  const c = globalThis.crypto;
+  if (typeof c.randomUUID === "function") return c.randomUUID();
+  return Array.from(c.getRandomValues(new Uint8Array(16)), (n) => n.toString(16).padStart(2, "0")).join("");
+}
+
+// lib/cooperative.ts
+var readyCountry = (q) => Array.isArray(q.clues) && q.clues.length === 10 && q.clues.every((s) => typeof s === "string" && s.trim().length > 0);
+var eligibleCountries = (r) => r.library.filter((q) => q.enabled !== false && (!r.settings.coop || readyCountry(q)));
+function clueSpots(p, spread = 35) {
+  return Array.from({ length: 10 }, (_, i) => {
+    const a = i * 2 * Math.PI / 10;
+    return { lat: +(+p.lat + Math.cos(a) * spread / 111320).toFixed(7), lng: +(+p.lng + Math.sin(a) * spread / (111320 * Math.cos(+p.lat * Math.PI / 180))).toFixed(7), radius: 10 };
+  });
+}
+function validSpot(p) {
+  return p && Number.isFinite(+p.lat) && Math.abs(+p.lat) <= 85 && Number.isFinite(+p.lng) && Math.abs(+p.lng) <= 180 && Number.isFinite(+p.radius) && +p.radius >= 5 && +p.radius <= 200;
+}
+function gpsPresent(position, p, now = Date.now()) {
+  return position && Number.isFinite(position.lat) && Number.isFinite(position.lng) && Number.isFinite(position.accuracy) && position.accuracy >= 0 && position.accuracy <= Math.max(50, +p.radius * 2) && Number.isFinite(position.at) && Math.abs(now - position.at) < 3e4 && distance(position, p) <= +p.radius;
+}
+function ownerFor(t, index) {
+  const members = t.members || [];
+  return members.length ? members[(index + t.step) % members.length] : null;
+}
+var collections = (t) => t.collections?.[String(t.step)] || [];
+var huntComplete = (t) => new Set(collections(t).map((x) => x.index)).size === 10;
+var huntReleased = (t) => !!t.arrivals?.[String(t.step)];
+function releaseHunt(r, t, position, now = Date.now()) {
+  const post = r.posts.find((p) => p.id === t.route[t.step]?.post);
+  if (!r.settings.coop || r.status !== "running" || t.done || now >= r.start + r.duration * 6e4 || huntReleased(t) || !post || !gpsPresent(position, post, now)) return false;
+  t.arrivals ||= {};
+  t.arrivals[String(t.step)] = now;
+  return true;
+}
+function huntView(r, t, member) {
+  const step = t.route[t.step], post = r.posts.find((p) => p.id === step?.post), q = r.library.find((q2) => q2.id === step?.qid);
+  const found = collections(t);
+  return { released: huntReleased(t), count: found.length, total: 10, step: t.step, clues: huntComplete(t) ? q?.clues || [] : [], assignments: huntReleased(t) && member && post && r.status === "running" && !t.done ? Array.from({ length: 10 }, (_, index) => ({ index, spot: post.clueSpots?.[index], found: found.some((x) => x.index === index) })).filter((x) => ownerFor(t, x.index)?.id === member.id) : [], members: (t.members || []).map((m) => ({ id: m.id, name: m.name, assigned: Array.from({ length: 10 }, (_, i) => i).filter((i) => ownerFor(t, i)?.id === m.id).length, collected: found.filter((x) => x.member === m.id).length })) };
+}
+function collectClue(r, t, m, b, now = Date.now()) {
+  if (!r.settings.coop || r.status !== "running" || t.done || now >= r.start + r.duration * 6e4) throw Error("\u0627\u0646\u062A\u0647\u0649 \u0648\u0642\u062A \u062C\u0645\u0639 \u0627\u0644\u0623\u062F\u0644\u0629");
+  if (!huntReleased(t)) throw Error("\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0648\u0635\u0648\u0644 \u0627\u0644\u0647\u0627\u062A\u0641 \u0627\u0644\u0631\u0626\u064A\u0633\u064A \u0625\u0644\u0649 \u0627\u0644\u0645\u062D\u0637\u0629");
+  if (b.step !== t.step || !Number.isInteger(b.index) || b.index < 0 || b.index > 9) throw Error("\u062A\u063A\u064A\u0651\u0631\u062A \u0627\u0644\u0645\u0631\u062D\u0644\u0629\u060C \u062D\u062F\u0651\u062B \u0627\u0644\u0635\u0641\u062D\u0629");
+  if (ownerFor(t, b.index)?.id !== m.id) throw Error("\u0647\u0630\u0627 \u0627\u0644\u062F\u0644\u064A\u0644 \u0645\u062E\u0635\u0651\u0635 \u0644\u0639\u0636\u0648 \u0622\u062E\u0631");
+  if (collections(t).some((x) => x.index === b.index)) return;
+  const route = t.route[t.step], post = r.posts.find((p) => p.id === route?.post), spot = post?.clueSpots?.[b.index];
+  if (!validSpot(spot)) throw Error("\u0645\u0648\u0642\u0639 \u0627\u0644\u062F\u0644\u064A\u0644 \u063A\u064A\u0631 \u0645\u0636\u0628\u0648\u0637");
+  const rescue = !!b.rescue && String(b.rescue) === String(post.rescue);
+  if (!rescue && !gpsPresent(b.position, spot, now)) throw Error("\u0627\u0642\u062A\u0631\u0628 \u0645\u0646 \u0645\u0648\u0642\u0639 \u0627\u0644\u062F\u0644\u064A\u0644 \u0648\u0641\u0639\u0651\u0644 \u0645\u0648\u0642\u0639\u064B\u0627 \u062D\u062F\u064A\u062B\u064B\u0627 \u0648\u062F\u0642\u064A\u0642\u064B\u0627");
+  t.collections ||= {};
+  t.collections[String(t.step)] ||= [];
+  t.collections[String(t.step)].push({ index: b.index, member: m.id, at: now, rescue });
+  if (huntComplete(t)) t.opened = t.opened || now;
+}
+
+// lib/skip-rules.ts
+function skipState(settings, t, now = Date.now()) {
+  const limit = settings.skipLimit ?? 3, waitMinutes = settings.skipWaitMinutes ?? 5;
+  const used = t.skipCount ?? (t.stamps || []).filter((s) => s.ok === false).length;
+  const arrived = t.arrivals?.[String(t.step)];
+  const waitSeconds = arrived ? Math.max(0, Math.ceil((arrived + waitMinutes * 6e4 - now) / 1e3)) : null;
+  return { limit, used, remaining: Math.max(0, limit - used), waitSeconds, canRequest: used < limit && waitSeconds === 0 && !t.request && !t.done };
+}
+function recordArrival(r, t, position, now) {
+  if (r.status !== "running" || t.done || now >= r.start + r.duration * 6e4 || t.arrivals?.[String(t.step)]) return false;
+  const p = r.posts.find((p2) => p2.id === t.route[t.step]?.post);
+  if (!p || !gpsPresent(position, p, now)) return false;
+  t.arrivals ||= {};
+  t.arrivals[String(t.step)] = now;
+  return true;
+}
+function requestSkip(r, t, now) {
+  const s = skipState(r.settings, t, now);
+  if (t.request) throw Error("\u0644\u062F\u064A\u0643 \u0637\u0644\u0628 \u062A\u062C\u0627\u0648\u0632 \u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631");
+  if (s.remaining === 0) throw Error("\u0628\u0644\u063A\u062A\u0645 \u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 \u0644\u0644\u062A\u062C\u0627\u0648\u0632\u0627\u062A");
+  if (s.waitSeconds === null) throw Error("\u064A\u062C\u0628 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 \u0627\u0644\u0645\u062D\u0637\u0629 \u0623\u0648\u0644\u064B\u0627");
+  if (s.waitSeconds > 0) throw Error("\u0627\u0646\u062A\u0638\u0631\u0648\u0627 " + s.waitSeconds + " \u062B\u0627\u0646\u064A\u0629 \u0642\u0628\u0644 \u0637\u0644\u0628 \u0627\u0644\u062A\u062C\u0627\u0648\u0632");
+  t.request = true;
+  t.skipRequest = { id: crypto.randomUUID(), step: t.step, at: now };
+}
+
 // supabase/functions/rihla-game/database.ts
 async function rest(query, method = "GET", body) {
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -25,21 +116,6 @@ var env = { DB: { prepare(sql) {
     return { meta: { changes: rows.length } };
   } };
 } } };
-
-// lib/team-utils.ts
-var distance = (a, b) => {
-  const rad = (x) => x * Math.PI / 180;
-  const d = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
-  return 6371e3 * 2 * Math.atan2(Math.sqrt(d), Math.sqrt(1 - d));
-};
-function makeTeam(name, i) {
-  return { id: uid(), name, color: ["#0df", "#c6f", "#fc6", "#5e9"][i % 4], emblem: ["\u{1F985}", "\u2B50", "\u{1F9ED}", "\u{1F30D}"][i % 4], secret: String(Math.floor(1e5 + Math.random() * 9e5)), inviteKey: uid(), members: [], collections: {}, route: [], step: 0, score: 0, success: 0, last: 0, stamps: [], errors: 0, hinted: false, opened: 0, override: false, request: false, done: false };
-}
-function uid() {
-  const c = globalThis.crypto;
-  if (typeof c.randomUUID === "function") return c.randomUUID();
-  return Array.from(c.getRandomValues(new Uint8Array(16)), (n) => n.toString(16).padStart(2, "0")).join("");
-}
 
 // lib/clues-remaining.ts
 var remainingClues = {
@@ -1156,56 +1232,6 @@ function testPosts(position) {
   return [[0, 0], [60, 0], [60, 60], [0, 60]].map(([east, north], i) => ({ id: uid(), name: "\u0627\u0644\u0645\u062D\u0637\u0629 " + (i + 1), lat: lat + north / 111320, lng: (lng + east / (111320 * Math.cos(lat * Math.PI / 180)) + 540) % 360 - 180, radius: 20, rescue: String(Math.floor(1e5 + Math.random() * 9e5)) }));
 }
 
-// lib/cooperative.ts
-var readyCountry = (q) => Array.isArray(q.clues) && q.clues.length === 10 && q.clues.every((s) => typeof s === "string" && s.trim().length > 0);
-var eligibleCountries = (r) => r.library.filter((q) => q.enabled !== false && (!r.settings.coop || readyCountry(q)));
-function clueSpots(p, spread = 35) {
-  return Array.from({ length: 10 }, (_, i) => {
-    const a = i * 2 * Math.PI / 10;
-    return { lat: +(+p.lat + Math.cos(a) * spread / 111320).toFixed(7), lng: +(+p.lng + Math.sin(a) * spread / (111320 * Math.cos(+p.lat * Math.PI / 180))).toFixed(7), radius: 10 };
-  });
-}
-function validSpot(p) {
-  return p && Number.isFinite(+p.lat) && Math.abs(+p.lat) <= 85 && Number.isFinite(+p.lng) && Math.abs(+p.lng) <= 180 && Number.isFinite(+p.radius) && +p.radius >= 5 && +p.radius <= 200;
-}
-function gpsPresent(position, p, now = Date.now()) {
-  return position && Number.isFinite(position.lat) && Number.isFinite(position.lng) && Number.isFinite(position.accuracy) && position.accuracy >= 0 && position.accuracy <= Math.max(50, +p.radius * 2) && Number.isFinite(position.at) && Math.abs(now - position.at) < 3e4 && distance(position, p) <= +p.radius;
-}
-function ownerFor(t, index) {
-  const members = t.members || [];
-  return members.length ? members[(index + t.step) % members.length] : null;
-}
-var collections = (t) => t.collections?.[String(t.step)] || [];
-var huntComplete = (t) => new Set(collections(t).map((x) => x.index)).size === 10;
-var huntReleased = (t) => !!t.arrivals?.[String(t.step)];
-function releaseHunt(r, t, position, now = Date.now()) {
-  const post = r.posts.find((p) => p.id === t.route[t.step]?.post);
-  if (!r.settings.coop || r.status !== "running" || t.done || now >= r.start + r.duration * 6e4 || huntReleased(t) || !post || !gpsPresent(position, post, now)) return false;
-  t.arrivals ||= {};
-  t.arrivals[String(t.step)] = now;
-  return true;
-}
-function huntView(r, t, member) {
-  const step = t.route[t.step], post = r.posts.find((p) => p.id === step?.post), q = r.library.find((q2) => q2.id === step?.qid);
-  const found = collections(t);
-  return { released: huntReleased(t), count: found.length, total: 10, step: t.step, clues: huntComplete(t) ? q?.clues || [] : [], assignments: huntReleased(t) && member && post && r.status === "running" && !t.done ? Array.from({ length: 10 }, (_, index) => ({ index, spot: post.clueSpots?.[index], found: found.some((x) => x.index === index) })).filter((x) => ownerFor(t, x.index)?.id === member.id) : [], members: (t.members || []).map((m) => ({ id: m.id, name: m.name, assigned: Array.from({ length: 10 }, (_, i) => i).filter((i) => ownerFor(t, i)?.id === m.id).length, collected: found.filter((x) => x.member === m.id).length })) };
-}
-function collectClue(r, t, m, b, now = Date.now()) {
-  if (!r.settings.coop || r.status !== "running" || t.done || now >= r.start + r.duration * 6e4) throw Error("\u0627\u0646\u062A\u0647\u0649 \u0648\u0642\u062A \u062C\u0645\u0639 \u0627\u0644\u0623\u062F\u0644\u0629");
-  if (!huntReleased(t)) throw Error("\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0648\u0635\u0648\u0644 \u0627\u0644\u0647\u0627\u062A\u0641 \u0627\u0644\u0631\u0626\u064A\u0633\u064A \u0625\u0644\u0649 \u0627\u0644\u0645\u062D\u0637\u0629");
-  if (b.step !== t.step || !Number.isInteger(b.index) || b.index < 0 || b.index > 9) throw Error("\u062A\u063A\u064A\u0651\u0631\u062A \u0627\u0644\u0645\u0631\u062D\u0644\u0629\u060C \u062D\u062F\u0651\u062B \u0627\u0644\u0635\u0641\u062D\u0629");
-  if (ownerFor(t, b.index)?.id !== m.id) throw Error("\u0647\u0630\u0627 \u0627\u0644\u062F\u0644\u064A\u0644 \u0645\u062E\u0635\u0651\u0635 \u0644\u0639\u0636\u0648 \u0622\u062E\u0631");
-  if (collections(t).some((x) => x.index === b.index)) return;
-  const route = t.route[t.step], post = r.posts.find((p) => p.id === route?.post), spot = post?.clueSpots?.[b.index];
-  if (!validSpot(spot)) throw Error("\u0645\u0648\u0642\u0639 \u0627\u0644\u062F\u0644\u064A\u0644 \u063A\u064A\u0631 \u0645\u0636\u0628\u0648\u0637");
-  const rescue = !!b.rescue && String(b.rescue) === String(post.rescue);
-  if (!rescue && !gpsPresent(b.position, spot, now)) throw Error("\u0627\u0642\u062A\u0631\u0628 \u0645\u0646 \u0645\u0648\u0642\u0639 \u0627\u0644\u062F\u0644\u064A\u0644 \u0648\u0641\u0639\u0651\u0644 \u0645\u0648\u0642\u0639\u064B\u0627 \u062D\u062F\u064A\u062B\u064B\u0627 \u0648\u062F\u0642\u064A\u0642\u064B\u0627");
-  t.collections ||= {};
-  t.collections[String(t.step)] ||= [];
-  t.collections[String(t.step)].push({ index: b.index, member: m.id, at: now, rescue });
-  if (huntComplete(t)) t.opened = t.opened || now;
-}
-
 // app/api/game/route.ts
 var json = (x, s = 200) => Response.json(x, { status: s, headers: { "Cache-Control": "no-store" } });
 function view(r, t, admin, member) {
@@ -1259,7 +1285,7 @@ async function POST(req) {
     if (!db) return json({ error: "\u0642\u0627\u0639\u062F\u0629 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u064A\u0631 \u0645\u062A\u0627\u062D\u0629" }, 503);
     if (b.action === "create") {
       const code = crypto.randomUUID().replaceAll("-", "").slice(0, 6).toUpperCase(), token = crypto.randomUUID(), coop = b.coop === true;
-      const r = { code, token, name: String(b.name || "\u0631\u062D\u0644\u0629 \u0627\u0644\u0627\u0643\u062A\u0634\u0627\u0641").slice(0, 100), status: "waiting", start: 0, duration: 90, grace: 5, demo: !!b.demo, catalogVersion: 2, settings: { points: 100, penalty: 10, hint: 10, skip: 30, count: coop ? 5 : 8, coop }, library: bank, teams: [], posts: [] };
+      const r = { code, token, name: String(b.name || "\u0631\u062D\u0644\u0629 \u0627\u0644\u0627\u0643\u062A\u0634\u0627\u0641").slice(0, 100), status: "waiting", start: 0, duration: 90, grace: 5, demo: !!b.demo, catalogVersion: 2, settings: { points: 100, penalty: 10, hint: 10, skip: 30, skipLimit: 3, skipWaitMinutes: 5, count: coop ? 5 : 8, coop }, library: bank, teams: [], posts: [] };
       if (b.demo) {
         r.teams = [makeTeam("\u0641\u0631\u064A\u0642 \u0627\u0644\u0646\u0633\u0648\u0631", 0), ...!coop ? [makeTeam("\u0641\u0631\u064A\u0642 \u0627\u0644\u0646\u062C\u0648\u0645", 1)] : []];
         r.posts = testPosts(b.position).map((p) => ({ ...p, ...coop ? { clueSpots: clueSpots(p, 25) } : {} }));
@@ -1319,7 +1345,8 @@ async function POST(req) {
       }
       if (!admin && !t) return json({ error: "\u064A\u0631\u062C\u0649 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0645\u062C\u062F\u062F\u064B\u0627" }, 403);
       if (b.action === "read") {
-        let changed = !admin && !member ? releaseHunt(r, t, b.position, now) : false;
+        let changed = !admin && !member ? recordArrival(r, t, b.position, now) : false;
+        changed = (!admin && !member ? releaseHunt(r, t, b.position, now) : false) || changed;
         if (admin) {
           changed = upgradeWaitingLibrary(r);
           changed = hydrateClues(r) || changed;
@@ -1350,8 +1377,9 @@ async function POST(req) {
         if (b.action === "save") {
           if (r.status !== "waiting") throw Error("\u0644\u0627 \u064A\u0645\u0643\u0646 \u062A\u0639\u062F\u064A\u0644 \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0628\u0639\u062F \u0627\u0644\u0627\u0646\u0637\u0644\u0627\u0642");
           const c = b.config;
-          const numeric = { points: +c.settings.points, penalty: +c.settings.penalty, hint: +c.settings.hint, skip: +c.settings.skip, count: +c.settings.count };
+          const numeric = { points: +c.settings.points, penalty: +c.settings.penalty, hint: +c.settings.hint, skip: +c.settings.skip, skipLimit: +(c.settings.skipLimit ?? 3), skipWaitMinutes: +(c.settings.skipWaitMinutes ?? 5), count: +c.settings.count };
           if (Object.values(numeric).some((v) => !Number.isFinite(v) || v < 0) || !Number.isInteger(numeric.count) || numeric.count < 1) throw Error("\u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0628\u0627\u0631\u0645 \u0648\u0639\u062F\u062F \u0627\u0644\u0628\u0644\u062F\u0627\u0646");
+          if (!Number.isInteger(numeric.skipLimit) || numeric.skipLimit > 100 || numeric.skipWaitMinutes > 600) throw Error("\u062A\u062D\u0642\u0642 \u0645\u0646 \u0639\u062F\u062F \u0627\u0644\u062A\u062C\u0627\u0648\u0632\u0627\u062A \u0648\u0645\u062F\u0629 \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631");
           if (!Number.isFinite(+c.duration) || +c.duration < 1 || +c.duration > 600) throw Error("\u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0645\u062F\u0629");
           if (!Array.isArray(c.library) || !Array.isArray(c.posts) || !Array.isArray(c.teams) || c.library.length > 200) throw Error("\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u063A\u064A\u0631 \u0635\u0627\u0644\u062D\u0629");
           r.name = String(c.name).slice(0, 100);
@@ -1383,20 +1411,30 @@ async function POST(req) {
         } else if (b.action === "skip") {
           const x = r.teams.find((x2) => x2.id === b.target);
           if (!x?.request) throw Error("\u0627\u0644\u0637\u0644\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F");
+          if (b.approve && !x.skipRequest || x.skipRequest && (x.skipRequest.id !== b.requestId || x.skipRequest.step !== x.step)) throw Error("\u062A\u063A\u064A\u0651\u0631 \u0637\u0644\u0628 \u0627\u0644\u062A\u062C\u0627\u0648\u0632\u060C \u062D\u062F\u0651\u062B \u0627\u0644\u0644\u0648\u062D\u0629");
           if (b.approve) {
-            if (r.status !== "running" || now >= close) throw Error("\u0627\u0646\u062A\u0647\u062A \u0627\u0644\u0644\u0639\u0628\u0629");
+            if (r.status !== "running" || x.done || now >= close) throw Error("\u0627\u0646\u062A\u0647\u062A \u0627\u0644\u0644\u0639\u0628\u0629");
+            const state = skipState(r.settings, x, now);
+            if (state.remaining === 0 || state.waitSeconds !== 0) throw Error("\u0644\u0645 \u062A\u062A\u062D\u0642\u0642 \u0634\u0631\u0648\u0637 \u0627\u0644\u062A\u062C\u0627\u0648\u0632");
             const q = r.library.find((q2) => q2.id === x.route[x.step]?.qid);
             if (!q) throw Error("\u0627\u0644\u0645\u062D\u0637\u0629 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F\u0629");
+            x.skipCount = state.used + 1;
             x.score = Math.max(0, x.score - r.settings.skip);
-            x.stamps.push({ country: q.country, flag: q.flag, ok: false });
+            x.stamps.push({ country: q.country, flag: q.flag, ok: false, skipped: true });
+            x.skipHistory ||= [];
+            x.skipHistory.push({ ...x.skipRequest, decision: "approved", decidedAt: now, penalty: r.settings.skip });
             x.step++;
             x.errors = 0;
             x.hinted = false;
             x.opened = 0;
             x.override = false;
             x.done = now >= end || x.step >= x.route.length;
+          } else {
+            x.skipHistory ||= [];
+            x.skipHistory.push({ ...x.skipRequest, decision: "rejected", decidedAt: now });
           }
           x.request = false;
+          x.skipRequest = null;
         } else throw Error("\u0625\u062C\u0631\u0627\u0621 \u063A\u064A\u0631 \u0645\u0639\u0631\u0648\u0641");
       } else {
         if (r.status !== "running" || t.done || now >= close) throw Error("\u0627\u0646\u062A\u0647\u0649 \u0648\u0642\u062A \u0627\u0644\u0625\u062C\u0627\u0628\u0629");
@@ -1408,14 +1446,13 @@ async function POST(req) {
           if (now >= end && !t.opened) throw Error("\u0627\u0646\u062A\u0647\u0649 \u0648\u0642\u062A \u0641\u062A\u062D \u0627\u0644\u0623\u0644\u063A\u0627\u0632");
           if (String(b.rescue) !== p.rescue) throw Error("\u0631\u0645\u0632 \u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D");
           t.override = true;
-          if (r.settings.coop) {
-            t.arrivals ||= {};
-            t.arrivals[String(t.step)] ||= now;
-          }
+          t.arrivals ||= {};
+          t.arrivals[String(t.step)] ||= now;
           if (ready) t.opened ||= now;
         } else {
           if (!present) throw Error("\u0627\u0628\u0642 \u062F\u0627\u062E\u0644 \u0646\u0637\u0627\u0642 \u0627\u0644\u0645\u062D\u0637\u0629 \u0645\u0639 \u0645\u0648\u0642\u0639 \u062D\u062F\u064A\u062B \u0648\u062F\u0642\u064A\u0642");
-          if (b.action === "request" && r.settings.coop) t.request = true;
+          recordArrival(r, t, b.position, now);
+          if (b.action === "request") requestSkip(r, t, now);
           else if (!ready) throw Error("\u0627\u062C\u0645\u0639\u0648\u0627 \u0627\u0644\u0623\u062F\u0644\u0629 \u0627\u0644\u0639\u0634\u0631\u0629 \u0623\u0648\u0644\u064B\u0627");
           else if (b.action === "open") {
             if (now >= end) throw Error("\u0627\u0646\u062A\u0647\u0649 \u0648\u0642\u062A \u0641\u062A\u062D \u0623\u0644\u063A\u0627\u0632 \u062C\u062F\u064A\u062F\u0629");
@@ -1427,7 +1464,7 @@ async function POST(req) {
                 t.score = Math.max(0, t.score - r.settings.hint);
                 t.hinted = true;
               }
-            } else if (b.action === "request") t.request = true;
+            } else if (b.action === "request") requestSkip(r, t, now);
             else if (b.action === "answer") {
               const answers = [q.country, ...String(q.aliases || "").split(",")].filter(Boolean).map(normalize);
               if (answers.includes(normalize(String(b.answer)))) {
@@ -1441,6 +1478,7 @@ async function POST(req) {
                 t.opened = 0;
                 t.override = false;
                 t.request = false;
+                t.skipRequest = null;
                 t.done = now >= end || t.step >= t.route.length;
               } else {
                 t.errors++;
