@@ -1,40 +1,45 @@
 import {useLayoutEffect,useRef} from 'react';
-import {flushSync} from 'react-dom';
 
-type Transition = {skipTransition:()=>void;ready:Promise<void>;finished:Promise<void>};
-type TransitionDocument = Document & {startViewTransition?:(update:()=>void)=>Transition};
+const excluded='header,nav,footer,.toast,.loading,.answer-effect,.dialog-backdrop';
 
-/** Keep navigation immediate, including on older Android WebViews. */
+/** A short, staggered rise and fade, matching the supplied Android reference. */
+export function animatePageEntrance(main:HTMLElement,includeStats:boolean,reducedMotion:boolean){
+ if(reducedMotion)return [];
+ const targets:Element[]=[];
+ for(const node of Array.from(main.children)){
+  if(node.matches(excluded)||(!includeStats&&node.matches('.team-title,.stats')))continue;
+  // Reveal form rows individually rather than moving a whole long form at once.
+  if(node.matches('.form-card')){
+   for(const child of Array.from(node.children)){
+    if(child.matches('form'))targets.push(...Array.from(child.children));
+    else targets.push(child);
+   }
+  }else targets.push(node);
+ }
+ const visible=targets.filter(node=>{const rect=node.getBoundingClientRect();return rect.height>0&&rect.bottom>0&&rect.top<window.innerHeight;});
+ return visible.flatMap((node,index)=>typeof node.animate==='function'?[node.animate(
+  [{opacity:0,transform:'translateY(22px)'},{opacity:1,transform:'translateY(0)'}],
+  {duration:480,delay:Math.min(index*65,260),easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'}
+ )]:[]);
+}
+
 export function usePageTransition(screen:string,tab:string,setScreen:(value:string)=>void,setTab:(value:string)=>void){
  const current=useRef({screen,tab});
- const active=useRef<Transition|null>(null);
- const revision=useRef(0);
- const fallback=useRef<Animation[]>([]);
+ const previousScreen=useRef('');
  useLayoutEffect(()=>{
-  if(active.current||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const nodes=document.querySelectorAll('main > :not(header):not(nav):not(footer):not(.team-title):not(.stats):not(.toast):not(.loading):not(.answer-effect):not(.dialog-backdrop)');
-  fallback.current.forEach(animation=>animation.cancel());
-  fallback.current=Array.from(nodes).flatMap(node=>typeof node.animate==='function'?[node.animate([{opacity:0,transform:'translateX(20px)'},{opacity:1,transform:'translateX(0)'}],{duration:350,easing:'cubic-bezier(.22,1,.36,1)'})]:[]);
-  return()=>{fallback.current.forEach(animation=>animation.cancel());fallback.current=[];};
+  window.scrollTo({top:0,behavior:'instant' as ScrollBehavior});
+  const main=document.querySelector('main');
+  const includeStats=previousScreen.current!==screen;
+  previousScreen.current=screen;
+  const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const animations=main?animatePageEntrance(main,includeStats,reducedMotion):[];
+  return()=>animations.forEach(animation=>animation.cancel());
  },[screen,tab]);
- useLayoutEffect(()=>()=>{revision.current++;active.current?.skipTransition();},[]);
  function navigate(kind:'screen'|'tab',value:string){
   if(current.current[kind]===value)return;
-  const id=++revision.current;
-  const before=current.current;
-  current.current={...before,[kind]:value};
-  const order=['passport','navigation','riddle','ranking'];
-  document.documentElement.dataset.journeyDirection=kind==='tab'&&order.indexOf(value)<order.indexOf(before.tab)?'back':'forward';
-  active.current?.skipTransition();
-  const update=(sync=true)=>{if(id!==revision.current)return;const commit=()=>{setScreen(current.current.screen);setTab(current.current.tab);};if(sync)flushSync(commit);else commit();};
-  const doc=document as TransitionDocument;
-  if(!doc.startViewTransition||matchMedia('(prefers-reduced-motion: reduce)').matches){active.current=null;update(false);return;}
-  try{
-   const transition=doc.startViewTransition(()=>update());
-   active.current=transition;
-   transition.ready.catch(()=>{});
-   transition.finished.catch(()=>{}).finally(()=>{if(active.current===transition)active.current=null;});
-  }catch{active.current=null;update(false);}
+  current.current={...current.current,[kind]:value};
+  setScreen(current.current.screen);
+  setTab(current.current.tab);
  }
  return {navigateScreen:(value:string)=>navigate('screen',value),navigateTab:(value:string)=>navigate('tab',value)};
 }

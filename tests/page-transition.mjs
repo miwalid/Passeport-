@@ -1,16 +1,17 @@
 import fs from 'node:fs';
 import ts from 'typescript';
 import assert from 'node:assert/strict';
-const code=ts.transpileModule(fs.readFileSync('components/use-page-transition.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText.replace(/^import .*;\n/gm,'').replace('export function usePageTransition','function usePageTransition');
-function fixture(native=true,reduced=false){
- const pending=[];const state={screen:'team',tab:'ranking'};
- const document={documentElement:{dataset:{}},...(native?{startViewTransition(update){let finish;const finished=new Promise(resolve=>finish=resolve);pending.push(async()=>{await update();finish();});return {skipTransition(){finish();},ready:Promise.resolve(),finished};}}:{})};
- const hook=new Function('useRef','useLayoutEffect','flushSync','document','matchMedia',code+';return usePageTransition;')((current)=>({current}),()=>{},fn=>fn(),document,()=>({matches:reduced}));
- const nav=hook(state.screen,state.tab,value=>state.screen=value,value=>state.tab=value);
- return {state,nav,pending};
-}
-const a=fixture();a.nav.navigateScreen('config');a.nav.navigateTab('posts');for(const commit of a.pending)await commit();assert.deepEqual(a.state,{screen:'config',tab:'posts'});
-const b=fixture();b.nav.navigateTab('passport');b.nav.navigateTab('navigation');b.nav.navigateTab('ranking');for(const commit of b.pending)await commit();assert.equal(b.state.tab,'ranking');
-for(const [native,reduced] of [[false,false],[true,true]]){const c=fixture(native,reduced);c.nav.navigateScreen('home');c.nav.navigateTab('passport');assert.deepEqual(c.state,{screen:'home',tab:'passport'});assert.equal(c.pending.length,0);}
-const d=fixture();d.nav.navigateTab('ranking');assert.equal(d.pending.length,0);
-console.log('PASS: combined screen/tab changes, rapid navigation keeps last request, legacy fallback, reduced motion and unchanged tabs.');
+const code=ts.transpileModule(fs.readFileSync('components/use-page-transition.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText.replace(/^import .*;\n/gm,'').replace(/export function /g,'function ');
+const {animatePageEntrance,usePageTransition}=new Function('useRef','useLayoutEffect','window',code+';return {animatePageEntrance,usePageTransition};')(current=>({current}),()=>{},{innerHeight:800});
+const state={screen:'team',tab:'ranking'};
+const nav=usePageTransition(state.screen,state.tab,value=>state.screen=value,value=>state.tab=value);
+nav.navigateScreen('config');nav.navigateTab('posts');assert.deepEqual(state,{screen:'config',tab:'posts'});
+nav.navigateTab('passport');nav.navigateTab('navigation');nav.navigateTab('ranking');assert.equal(state.tab,'ranking');
+const calls=[];
+const node=(kind,top=100,children=[])=>({children,matches:selector=>selector.split(',').includes(kind),getBoundingClientRect:()=>({top,bottom:top+80,height:80}),animate:(frames,options)=>{calls.push({kind,frames,options});return {cancel(){}};}});
+const main={children:[node('header'),node('.team-title'),node('.stats'),node('h1'),node('.form-card',100,[node('h2'),node('form',100,[node('label'),node('button')])]),node('article',900),node('nav')]};
+assert.equal(animatePageEntrance(main,false,true).length,0);assert.equal(calls.length,0);
+assert.equal(animatePageEntrance(main,false,false).length,4);
+assert.deepEqual(calls.map(x=>x.kind),['h1','h2','label','button']);assert.deepEqual(calls.map(x=>x.options.delay),[0,65,130,195]);assert(calls.every(x=>x.frames[0].transform==='translateY(22px)'&&x.frames[1].opacity===1));
+calls.length=0;animatePageEntrance(main,true,false);assert(calls.some(x=>x.kind==='.stats'));assert(!calls.some(x=>x.kind==='nav'));
+console.log('PASS: combined/rapid navigation, vertical stagger in reading order, stable menu/stats, viewport filtering and reduced motion.');
