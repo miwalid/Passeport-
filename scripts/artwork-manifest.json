@@ -1,0 +1,234 @@
+[
+  {
+    "path": "public/home.png",
+    "sha256": "3ce2d99549ac7fd36f94a9a26b5243f7272892a4059329f279e327de36886d6d"
+  },
+  {
+    "path": "public/favicon.svg",
+    "sha256": "e6d2e59b7b5bbb0342e0fb496dfc262decbfe4426bbb7b047aec8d467d1dc6f7"
+  },
+  {
+    "path": "public/art/exec-7ef10503-996f-4f39-bcce-135f91198805.png",
+    "sha256": "48ab1ed11786c6aa786d6836b9fac844c3af46d19abf12bf82aef04950febcff"
+  },
+  {
+    "path": "public/art/exec-64f64669-a28c-410f-b453-57247236cdb8.png",
+    "sha256": "7c52f621cee1cb6d0a9e51c57bfe1e551788f20e3c605262d74e7d6669747285"
+  },
+  {
+    "path": "public/art/exec-fa48d374-6483-41a3-97c2-901cfff65a8b.png",
+    "sha256": "3ce2d99549ac7fd36f94a9a26b5243f7272892a4059329f279e327de36886d6d"
+  },
+  {
+    "path": "public/art/country-stamps-approved.png",
+    "sha256": "781706dd7b7c067ec7dd4fbe6fdb644b4a233754063501de102a0823f5a892d3"
+  },
+  {
+    "path": "public/art/exec-3a97b336-baf5-4b67-aa2a-8947a0f38cf4.png",
+    "sha256": "0b76fad5dcf5fb9d10ba230b5259eebe4c7f22e4303505a3f022efc09f98a7ff"
+  },
+  {
+    "path": "public/art/exec-656ce2f5-9c99-4a9e-9129-6371165eb7a5.png",
+    "sha256": "c8e77e50a81b9c079ea22c283163ee4610b1a4abb1480d8b0681676da8fb8ccf"
+  },
+  {
+    "path": "public/art/world-background.png",
+    "sha256": "72641749741ca804a8f2aada0ca73c41675ad9b5e0c8cc9575a0893d440d0a64"
+  },
+  {
+    "path": "public/art/exec-87efd0ff-aa2c-410b-9f52-4a86b17e8492.png",
+    "sha256": "7aa5c58db4635262e3c762867bd930bf593efa1f0611a9c23b8471e37747bb0b"
+  },
+  {
+    "path": "public/art/exec-c672773e-dedc-4952-b60f-e8979a0deaab.png",
+    "sha256": "17b19bd666853bee29bb5015d995843b01816480078855228c681030e58b7c29"
+  },
+  {
+    "path": "public/art/exec-e57aaeac-b350-4706-9eeb-87c7282bd870.png",
+    "sha256": "262031fa0a503d260ac650317d11f42181d55cde44e618d0ad6e8eb458a03289"
+  },
+  {
+    "path": "public/art/stamps/turkey.webp",
+    "sha256": "a912080a241d67be37dea9276a35581a5c0c7a892d8c68dbb9eca0c8186bad43"
+  },
+  {
+    "path": "public/art/stamps/uk.webp",
+    "sha256": "3d48f669d7c3f5ef7428ace4e0b5ebb33b73f7aba16dde3f2e449ec20cce1b4f"
+  },
+  {
+    "path": "public/art/stamps/uae.webp",
+    "sha256": "1b3343b6392d42eb8abd98be52729bf0fcda70ba531c638c0d4bd24b613222d1"
+  },
+  {
+    "path": "public/art/stamps/norway.webp",
+    "sha256": "9f982972b04a8e52c1a5d0b3cd0e03da3fcbfc9df6b9fa6ace38095de744dc30"
+  },
+  {
+    "path": "public/art/stamps/colombia.webp",
+    "sha256": "c2751ad6f61c0c837863b1636751f5890ef39273a7c6ac5a05ee1b9051f19fed"
+  },
+  {
+    "path": "public/art/stamps/mexico.webp",
+    "sha256": "72afa5503131bc02b03f7d4e4fa7e2d73f2f3b8244c1faf681d30a06021b3bf3"
+  },
+  {
+    "path": "public/art/stamps/germany.webp",
+    "sha256": "6a08653eb46c301798030918655a6f209c37305f264e9ea3d76ad3e76d756cf1"
+  },
+  {
+    "path": "public/art/stamps/morocco.webp",
+    "sha256": "e0bdadec911ad04152ed6eb9cbd09f1b8a2de8291bbd4f5b9232ff4dae50c4e4"
+  },
+  {
+    "path": "public/art/stamps/senegal.webp",
+    "sha256": "3740ab0689d060a34fe3e7855d580f6bf3d53ace5ec681c0c76f670ce876e6c0"
+  },
+  {
+    "path": "public/art/stamps/new-zealand.webp",
+    "sha256": "aae2c2865b2f94aba9d253bb70e79cfaa167a51665320cf179c8af6c6dc25988"
+  },
+  {
+    "path": "public/art/stamps/malaysia.webp",
+    "sha256": "4743c396192b5b91a76cb6ad225d708bb1f9e9fb7060bdb40aeabac239aa2380"
+  },
+  {
+    "path": "public/art/stamps/jordan.webp",
+    "sha256": "a20429f004e9c0407be676ff25501098bee85aeb3d5286bebab10b4ce62d9874"
+  },
+  {
+    "path": "public/art/stamps/tanzania.webp",
+    "sha256": "e530bcdf8ffb2b5aeeb818d9f32ddadfeb6f8307bf6a117396e2f97a855f6b32"
+  },
+  {
+    "path": "public/art/stamps/usa.webp",
+    "sha256": "3cd75b9d642aa44537299a9ebc64e8a97aa1786895b108343d50046f486962e1"
+  },
+  {
+    "path": "public/art/stamps/belgium.webp",
+    "sha256": "87565f7292df354d3d2a98b56fb63061347794936ef89cb84e18160388351b46"
+  },
+  {
+    "path": "public/art/stamps/croatia.webp",
+    "sha256": "fe87f673dc882845860f88b225904b295c6be5e78d0fcf8554aace2d07473e5d"
+  },
+  {
+    "path": "public/art/stamps/vietnam.webp",
+    "sha256": "5afaaa389ee19a3440c578954a6b0299ccbd70fb67f033c80ac16e379c628219"
+  },
+  {
+    "path": "public/art/stamps/singapore.webp",
+    "sha256": "c3bdb1c03be156fee565549751211868ecf56d1d83d1388b08a866d69ef7ac1d"
+  },
+  {
+    "path": "public/art/stamps/portugal.webp",
+    "sha256": "c1b9d84369830a28130900b9d7f5c1aa5a4194e061199e9d5ef09f92cb4124e2"
+  },
+  {
+    "path": "public/art/stamps/kenya.webp",
+    "sha256": "66dfa1461a9a7931e45ad61c1dfcce609214294320990470c59334fedc409d59"
+  },
+  {
+    "path": "public/art/stamps/brazil.webp",
+    "sha256": "88ff3011b85933b7bd8ef9abed58768f3e45755010a85358d640375d30accc7e"
+  },
+  {
+    "path": "public/art/stamps/poland.webp",
+    "sha256": "c39f65fa3f2d0b7f6c9516d3495167a29ec9154ccb846c2dc69f8e773247dfba"
+  },
+  {
+    "path": "public/art/stamps/thailand.webp",
+    "sha256": "7538d0d72cb6a352d0baee73879bbc6e3a69a22d97c9279b8a75fb26c16cb382"
+  },
+  {
+    "path": "public/art/stamps/france.webp",
+    "sha256": "9b5bd891ce1d3a03a30090be1565ce052351fad5195115ed485f013d517a82cd"
+  },
+  {
+    "path": "public/art/stamps/spain.webp",
+    "sha256": "178d9ad5270783527793c642574969f93e5e4211330f30980c3a0a287d31595c"
+  },
+  {
+    "path": "public/art/stamps/australia.webp",
+    "sha256": "e51fe44465126d7484867f5aed64188bc478d415bb0e01941e1fda2323941c12"
+  },
+  {
+    "path": "public/art/stamps/china.webp",
+    "sha256": "a0921a621a2aff9a5a769edbd1ea513629f919fe49a33550ea6ef10d794d16af"
+  },
+  {
+    "path": "public/art/stamps/sweden.webp",
+    "sha256": "cddc5c7a08aafdf48bd3ab6fcf8c4f0c617d6231610e649b1525c3c58c7e64c2"
+  },
+  {
+    "path": "public/art/stamps/greece.webp",
+    "sha256": "f0a7a5eae8305979d2a73549e2c13b19f63c2784cea38c56e6cb92f04a92fff5"
+  },
+  {
+    "path": "public/art/stamps/indonesia.webp",
+    "sha256": "5672787bae04ae94991eb30fb9b235785f0a3914f91aa8284fb6bd0fc6af20a5"
+  },
+  {
+    "path": "public/art/stamps/india.webp",
+    "sha256": "95e506fe9b7b0ab7411ca22a1f26e9a98eb3bccd99e3fd1167600bcac6c47dca"
+  },
+  {
+    "path": "public/art/stamps/netherlands.webp",
+    "sha256": "df2ba32d915eca4cb4266c598d8b9ec676ca6fc2db2094f2ae9a75099af63e52"
+  },
+  {
+    "path": "public/art/stamps/canada.webp",
+    "sha256": "16693daecbe451a55359ffe65254cfd3c326bc96646010a7e1db3b2c8f02157e"
+  },
+  {
+    "path": "public/art/stamps/ireland.webp",
+    "sha256": "f608c0625b7c01f1caa54f522c7caca45307985dd390aa39532ebcb502a40dc8"
+  },
+  {
+    "path": "public/art/stamps/switzerland.webp",
+    "sha256": "878be71bbee86a01070ea8bf5ca89e41cae01445bfc24484103e6662fdae13ee"
+  },
+  {
+    "path": "public/art/stamps/south-africa.webp",
+    "sha256": "f5c0400dd574a3fe549aa1c078786659ab6a16117ed2414554e091f28bd31fa8"
+  },
+  {
+    "path": "public/art/stamps/south-korea.webp",
+    "sha256": "5abb99e0abafc9aa2be899a7e0d2b7269b9c9171361d5c92c7198c358a3150a2"
+  },
+  {
+    "path": "public/art/stamps/madagascar.webp",
+    "sha256": "042b6c7ded115619fe2aa207be05052af0f1d148afbc302eec0b890c1e2266d9"
+  },
+  {
+    "path": "public/art/stamps/finland.webp",
+    "sha256": "55678a14534cebc4a57ab371f1645065e95b4659ff75f812165e4b8a555a16e9"
+  },
+  {
+    "path": "public/art/stamps/russia.webp",
+    "sha256": "812f70cb026d907f86b7887451d6c912933146d1e2ca1c1c513cbacef020c33f"
+  },
+  {
+    "path": "public/art/stamps/iceland.webp",
+    "sha256": "5ad9dcfd7ababe702f6e0517b53fbaa24c5de855461eb702536fc51d4d778c22"
+  },
+  {
+    "path": "public/art/stamps/argentina.webp",
+    "sha256": "91a150dad5e7d40774b58ffebf654941d92dd452d77942984f9c1147b65867fe"
+  },
+  {
+    "path": "public/art/stamps/cuba.webp",
+    "sha256": "85c925e93d649e20246df99b6a1cb6c61e4d3246a38f49e3d431813de28aa170"
+  },
+  {
+    "path": "public/art/stamps/chile.webp",
+    "sha256": "9997970c840bcdd13a18ec817eaa663dc154acf867c6c7b93ea2da5f4f8ed950"
+  },
+  {
+    "path": "public/art/stamps/peru.webp",
+    "sha256": "4d479a4f59b03a7d455a5c66e3d8856b2f6eb38df7f9fa190138a9e88f4dc7d9"
+  },
+  {
+    "path": "public/art/stamps/saudi-arabia.webp",
+    "sha256": "843d987ae4c833e0655c9e168a0f96527b887ae729573c3bf1eee90e602294eb"
+  }
+]
