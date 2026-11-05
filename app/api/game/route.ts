@@ -76,7 +76,7 @@ export async function POST(req:Request){try{
  r.posts=c.posts.map((p:any)=>{if(!Number.isFinite(+p.lat)||Math.abs(+p.lat)>90||!Number.isFinite(+p.lng)||Math.abs(+p.lng)>180||!Number.isFinite(+p.radius)||+p.radius<5)throw Error('إحداثيات أو نطاق غير صحيح');return {id:p.id,name:String(p.name).slice(0,80),lat:+p.lat,lng:+p.lng,radius:+p.radius,rescue:p.rescue,clueSpots:Array.isArray(p.clueSpots)?p.clueSpots.map((s:any)=>({lat:+s.lat,lng:+s.lng,radius:+s.radius})):[]};});
  if(c.teams.length>100||new Set(c.teams.map((x:any)=>x.secret)).size!==c.teams.length||new Set(c.teams.map((x:any)=>x.id)).size!==c.teams.length)throw Error('معرّفات الفرق ورموزها يجب أن تكون مختلفة');
  r.teams=c.teams.map((x:any,i:number)=>{const old=r.teams.find((v:any)=>v.id===x.id)||{...makeTeam(x.name,i),id:x.id};return {...old,inviteKey:old.inviteKey||crypto.randomUUID(),members:old.members||[],collections:old.collections||{},name:String(x.name).slice(0,40),color:String(x.color),emblem:String(x.emblem),secret:String(x.secret),route:Array.isArray(x.route)?x.route:[]};});
- r.library=c.library;hydrateClues(r);if(eligibleCountries(r).length<numeric.count)throw Error('عدد البلدان الجاهزة غير كافٍ: وضع التعاون يتطلب 10 أدلة لكل بلد');
+ r.library=c.library;hydrateClues(r);if(eligibleCountries(r).length<numeric.count)throw Error('اختر بلدانًا كافية لعدد المراحل أو قلّل عدد المراحل. وضع التعاون يتطلب 10 أدلة لكل بلد');
  }else if(b.action==='start')start(r,now);
  else if(b.action==='assign'){if(r.status!=='waiting')throw Error('التوزيع قبل الانطلاق فقط');assign(r);}
  else if(b.action==='finish'){r.status='finished';r.finishedAt ||= now;r.teams.forEach((x:any)=>{x.done=true;x.request=false;});}

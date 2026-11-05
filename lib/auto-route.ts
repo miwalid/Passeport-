@@ -1,7 +1,7 @@
 import {uid} from './team-utils';
 import {clueSpots,readyCountry} from './cooperative';
 export function autoRoute(draft:any,position:any,spacing=120){
- const count=Number(draft.settings.count),countries=draft.library.filter((q:any)=>!draft.settings.coop||readyCountry(q));
+ const count=Number(draft.settings.count),countries=draft.library.filter((q:any)=>q.enabled!==false&&(!draft.settings.coop||readyCountry(q)));
  if(!Number.isInteger(count)||count<1||count>50||count>countries.length)throw Error('اختر عددًا من 1 إلى 50 لا يتجاوز عدد البلدان الجاهزة');
  if(!position||!Number.isFinite(position.lat)||!Number.isFinite(position.lng)||Math.abs(position.lat)>85||Math.abs(position.lng)>180)throw Error('تعذّر تحديد الموقع');
  if(!Number.isFinite(spacing)||spacing<80||spacing>500)throw Error('المسافة بين المحطات من 80 إلى 500 م');

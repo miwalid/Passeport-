@@ -1158,7 +1158,7 @@ function testPosts(position) {
 
 // lib/cooperative.ts
 var readyCountry = (q) => Array.isArray(q.clues) && q.clues.length === 10 && q.clues.every((s) => typeof s === "string" && s.trim().length > 0);
-var eligibleCountries = (r) => r.settings.coop ? r.library.filter(readyCountry) : r.library;
+var eligibleCountries = (r) => r.library.filter((q) => q.enabled !== false && (!r.settings.coop || readyCountry(q)));
 function clueSpots(p, spread = 35) {
   return Array.from({ length: 10 }, (_, i) => {
     const a = i * 2 * Math.PI / 10;
@@ -1368,7 +1368,7 @@ async function POST(req) {
           });
           r.library = c.library;
           hydrateClues(r);
-          if (eligibleCountries(r).length < numeric.count) throw Error("\u0639\u062F\u062F \u0627\u0644\u0628\u0644\u062F\u0627\u0646 \u0627\u0644\u062C\u0627\u0647\u0632\u0629 \u063A\u064A\u0631 \u0643\u0627\u0641\u064D: \u0648\u0636\u0639 \u0627\u0644\u062A\u0639\u0627\u0648\u0646 \u064A\u062A\u0637\u0644\u0628 10 \u0623\u062F\u0644\u0629 \u0644\u0643\u0644 \u0628\u0644\u062F");
+          if (eligibleCountries(r).length < numeric.count) throw Error("\u0627\u062E\u062A\u0631 \u0628\u0644\u062F\u0627\u0646\u064B\u0627 \u0643\u0627\u0641\u064A\u0629 \u0644\u0639\u062F\u062F \u0627\u0644\u0645\u0631\u0627\u062D\u0644 \u0623\u0648 \u0642\u0644\u0651\u0644 \u0639\u062F\u062F \u0627\u0644\u0645\u0631\u0627\u062D\u0644. \u0648\u0636\u0639 \u0627\u0644\u062A\u0639\u0627\u0648\u0646 \u064A\u062A\u0637\u0644\u0628 10 \u0623\u062F\u0644\u0629 \u0644\u0643\u0644 \u0628\u0644\u062F");
         } else if (b.action === "start") start(r, now);
         else if (b.action === "assign") {
           if (r.status !== "waiting") throw Error("\u0627\u0644\u062A\u0648\u0632\u064A\u0639 \u0642\u0628\u0644 \u0627\u0644\u0627\u0646\u0637\u0644\u0627\u0642 \u0641\u0642\u0637");

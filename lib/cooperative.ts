@@ -1,6 +1,6 @@
 import {distance} from './team-utils';
 export const readyCountry=(q:any)=>Array.isArray(q.clues)&&q.clues.length===10&&q.clues.every((s:any)=>typeof s==='string'&&s.trim().length>0);
-export const eligibleCountries=(r:any)=>r.settings.coop?r.library.filter(readyCountry):r.library;
+export const eligibleCountries=(r:any)=>r.library.filter((q:any)=>q.enabled!==false&&(!r.settings.coop||readyCountry(q)));
 export function clueSpots(p:any,spread=35){return Array.from({length:10},(_,i)=>{const a=i*2*Math.PI/10;return {lat:+(+p.lat+Math.cos(a)*spread/111320).toFixed(7),lng:+(+p.lng+Math.sin(a)*spread/(111320*Math.cos(+p.lat*Math.PI/180))).toFixed(7),radius:10};});}
 export function validSpot(p:any){return p&&Number.isFinite(+p.lat)&&Math.abs(+p.lat)<=85&&Number.isFinite(+p.lng)&&Math.abs(+p.lng)<=180&&Number.isFinite(+p.radius)&&+p.radius>=5&&+p.radius<=200;}
 export function gpsPresent(position:any,p:any,now=Date.now()){return position&&Number.isFinite(position.lat)&&Number.isFinite(position.lng)&&Number.isFinite(position.accuracy)&&position.accuracy>=0&&position.accuracy<=Math.max(50,+p.radius*2)&&Number.isFinite(position.at)&&Math.abs(now-position.at)<30000&&distance(position,p)<=+p.radius;}
