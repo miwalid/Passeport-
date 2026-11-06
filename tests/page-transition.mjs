@@ -12,6 +12,7 @@ const node=(kind,top=100,children=[])=>({children,matches:selector=>selector.spl
 const main={children:[node('header'),node('.team-title'),node('.stats'),node('h1'),node('.form-card',100,[node('h2'),node('form',100,[node('label'),node('button')])]),node('article',900),node('nav')]};
 assert.equal(animatePageEntrance(main,false,true).length,0);assert.equal(calls.length,0);
 assert.equal(animatePageEntrance(main,false,false).length,4);
-assert.deepEqual(calls.map(x=>x.kind),['h1','h2','label','button']);assert.deepEqual(calls.map(x=>x.options.delay),[0,65,130,195]);assert(calls.every(x=>x.frames[0].transform==='translateY(22px)'&&x.frames[1].opacity===1));
+assert.deepEqual(calls.map(x=>x.kind),['h1','h2','label','button']);assert.deepEqual(calls.map(x=>x.options.delay),[0,75,150,225]);assert(calls.every(x=>x.frames[0].transform==='translateY(28px)'&&x.frames[1].opacity===1));
+calls.length=0;const compass=node('.compass');animatePageEntrance({children:[node('.navigation-panel',100,[node('h1'),compass,node('p')])]},false,false);assert.deepEqual(calls.map(x=>x.kind),['h1','.compass','p']);assert(calls.every(x=>x.options.duration===520));
 calls.length=0;animatePageEntrance(main,true,false);assert(calls.some(x=>x.kind==='.stats'));assert(!calls.some(x=>x.kind==='nav'));
 console.log('PASS: combined/rapid navigation, vertical stagger in reading order, stable menu/stats, viewport filtering and reduced motion.');

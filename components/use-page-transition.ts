@@ -9,7 +9,7 @@ export function animatePageEntrance(main:HTMLElement,includeStats:boolean,reduce
  for(const node of Array.from(main.children)){
   if(node.matches(excluded)||(!includeStats&&node.matches('.team-title,.stats')))continue;
   // Reveal form rows individually rather than moving a whole long form at once.
-  if(node.matches('.form-card')){
+  if(node.matches('.form-card,.navigation-panel,.passport')){
    for(const child of Array.from(node.children)){
     if(child.matches('form'))targets.push(...Array.from(child.children));
     else targets.push(child);
@@ -18,8 +18,8 @@ export function animatePageEntrance(main:HTMLElement,includeStats:boolean,reduce
  }
  const visible=targets.filter(node=>{const rect=node.getBoundingClientRect();return rect.height>0&&rect.bottom>0&&rect.top<window.innerHeight;});
  return visible.flatMap((node,index)=>typeof node.animate==='function'?[node.animate(
-  [{opacity:0,transform:'translateY(22px)'},{opacity:1,transform:'translateY(0)'}],
-  {duration:480,delay:Math.min(index*65,260),easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'}
+  [{opacity:0,transform:'translateY(28px)'},{opacity:1,transform:'translateY(0)'}],
+  {duration:520,delay:Math.min(index*75,300),easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'}
  )]:[]);
 }
 
